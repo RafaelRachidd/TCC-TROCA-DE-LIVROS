@@ -1,0 +1,159 @@
+@startuml
+title Diagrama de Sequência Geral — Sistema de Troca de Livros
+
+actor "Usuário A\n(Iniciador)" as UsuarioA
+actor "Usuário B\n(Receptor)" as UsuarioB
+
+participant "Aplicativo Web/Mobile" as App
+participant "API / Gateway" as Sistema
+participant "Serviço de Autenticação" as Auth
+participant "Serviço de Livros" as Livros
+participant "Serviço de Match" as Match
+participant "Serviço de Troca" as Troca
+participant "Serviço de Notificações" as Notif
+database "Banco de Dados" as BD
+
+== 1. Cadastro / Autenticação (RF-01 / RF-06) ==
+
+UsuarioA -> App : Acessa o sistema
+App -> Sistema : Solicita autenticação
+Sistema -> Auth : Validar credenciais
+Auth -> BD : Consultar usuário
+BD --> Auth : Dados do usuário
+Auth --> Sistema : Autenticação aprovada
+Sistema --> App : Sessão iniciada (Token JWT)
+App --> UsuarioA : Exibe página inicial
+
+
+== 2. Descoberta de Livros (RF-02 / RF-04 / RF-10) ==
+
+UsuarioA -> App : Busca livros disponíveis
+App -> Sistema : Solicita livros da região
+Sistema -> Livros : Buscar livros no raio definido
+Livros -> BD : Consultar livros disponíveis
+BD --> Livros : Lista de livros
+Livros --> Sistema : Livros encontrados
+Sistema --> App : Retorna resultados
+App --> UsuarioA : Exibe livros disponíveis
+
+UsuarioA -> App : Visualiza detalhes do livro
+App -> Sistema : Solicita detalhes do livro e obra
+Sistema -> Livros : Consultar livro
+Livros -> BD : Buscar informações
+BD --> Livros : Dados do livro
+Livros --> Sistema : Detalhes
+Sistema --> App : Retorna detalhes
+App --> UsuarioA : Exibe detalhes
+
+
+== 3. Interesse e Match (RF-05 / RF-20) ==
+
+UsuarioA -> App : Demonstra interesse no livro do Usuário B
+App -> Sistema : Registra interesse
+Sistema -> Match : Analisar interesse e reciprocidade
+Match -> BD : Consultar compatibilidade
+BD --> Match : Dados dos usuários/livros
+
+alt Match não encontrado
+    Match --> Sistema : Interesse registrado unilateralmente
+    Sistema -> Notif : Gerar notificação para o proprietário
+    Notif --> UsuarioB : Notifica interesse no seu livro
+
+else Match encontrado (Reciprocidade)
+    Match --> Sistema : Match confirmado
+    Sistema -> Troca : Solicitar reserva dos dois livros
+    Troca -> BD : Reservar livros atomicamente (RNFR-20.2)
+
+    alt Reserva realizada com sucesso
+        BD --> Troca : Reserva confirmada
+        Troca --> Sistema : Match ativo
+        Sistema -> Notif : Notificar ambos participantes
+        Notif --> UsuarioA : Match confirmado!
+        Notif --> UsuarioB : Match confirmado!
+
+    else Falha na reserva
+        BD --> Troca : Erro na reserva
+        Troca --> Sistema : Operação cancelada
+        Sistema --> App : Informa falha de disponibilidade
+        App --> UsuarioA : Não foi possível reservar os livros
+    end
+end
+
+
+== 4. Chat e Negociação (RF-11) ==
+
+UsuarioA -> App : Abre chat do match
+App -> Sistema : Solicita histórico de mensagens
+Sistema -> BD : Validar match ativo
+BD --> Sistema : Match válido
+Sistema --> App : Libera interface do chat
+
+UsuarioA -> App : Envia mensagem
+App -> Sistema : Envia mensagem criptografada
+Sistema -> BD : Salva mensagem
+Sistema -> Notif : Notificar participante
+Notif --> UsuarioB : Recebeu nova mensagem
+
+
+== 5. Combinação da Troca (RF-12) ==
+
+UsuarioA -> App : Propõe local, data e horário
+App -> Sistema : Envia proposta de encontro
+Sistema -> Troca : Registrar proposta
+Troca -> BD : Salvar dados do encontro
+Sistema -> Notif : Notificar Usuário B
+Notif --> UsuarioB : Recebeu proposta de encontro
+
+UsuarioB -> App : Confirma proposta de encontro
+App -> Sistema : Confirmar encontro
+Sistema -> Troca : Atualizar status da troca
+Troca -> BD : Salvar confirmação do encontro
+Sistema -> Notif : Notificar Usuário A
+Notif --> UsuarioA : Encontro confirmado por Usuário B
+
+
+== 6. Conclusão e Transferência (RF-13) ==
+
+UsuarioA -> App : Confirma realização da troca
+UsuarioB -> App : Confirma realização da troca
+App -> Sistema : Solicita conclusão
+Sistema -> Troca : Validar confirmação dupla
+
+alt Ambas confirmações recebidas
+    Troca -> BD : Transação: Atualizar posse dos livros e liberar histórico
+    BD --> Troca : Operação concluída com sucesso
+    Troca --> Sistema : Troca finalizada
+
+    Sistema -> Notif : Enviar confirmação e convite para avaliação
+    Notif --> UsuarioA : Troca concluída! Opção de republicar e avaliar
+    Notif --> UsuarioB : Troca concluída! Opção de republicar e avaliar
+
+else Divergência registrada
+    Troca -> BD : Registrar status de divergência
+    BD --> Troca : Divergência cadastrada
+    Troca --> Sistema : Encaminhar para moderação
+    Sistema --> App : Exibir orientação de divergência
+    App --> UsuarioA : Informações enviadas para análise
+end
+
+
+== 7. Avaliação (RF-14) ==
+
+UsuarioA -> App : Avalia Usuário B
+App -> Sistema : Envia nota e comentário
+Sistema -> BD : Registrar avaliação e recalcular média
+BD --> Sistema : Avaliação registrada
+Sistema --> App : Confirma avaliação
+App --> UsuarioA : Avaliação enviada
+
+
+== 8. Histórico (RF-15) ==
+
+UsuarioA -> App : Consulta histórico
+App -> Sistema : Solicita histórico de trocas
+Sistema -> BD : Buscar registros com paginação
+BD --> Sistema : Histórico paginado
+Sistema --> App : Retorna histórico
+App --> UsuarioA : Exibe histórico de trocas
+
+@enduml

@@ -1,0 +1,46 @@
+@startuml
+title Diagrama de Atividade — Cadastro e Disponibilização de Livro
+
+start
+
+:Usuário seleciona "Cadastrar livro";
+
+:Informar ISBN, título ou autor;
+
+:Consultar API de metadados;
+
+if (Livro encontrado?) then (Sim)
+    :Carregar metadados da API;
+else (Não)
+    :Realizar preenchimento manual;
+endif
+
+:Informar estado de conservação;
+:Adicionar fotografias;
+:Definir disponibilidade;
+:Definir visibilidade;
+
+if (Publicar agora?) then (Sim)
+    repeat
+        :Validar dados obrigatórios;
+        if (Dados válidos?) then (Sim)
+            :Publicar livro;
+            :Livro fica disponível para descoberta;
+            stop
+        else (Não)
+            :Exibir mensagens de erro nos campos;
+            :Corrigir informações;
+        endif
+    repeat while (Deseja tentar novamente?) is (Sim)
+
+else (Não)
+    if (Salvar como rascunho?) then (Sim)
+        :Salvar livro como rascunho;
+    else (Ocultar)
+        :Salvar livro na lista privada (Oculto);
+    endif
+endif
+
+stop
+
+@enduml

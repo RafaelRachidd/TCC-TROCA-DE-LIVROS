@@ -1,0 +1,167 @@
+@startuml
+title Diagrama de Classes — Sistema de Troca de Livros
+
+class Usuario {
+    - id: Long
+    - nome: String
+    - email: String
+    - senhaHash: String
+    - telefone: String
+    - status: StatusUsuario
+    + criarConta()
+    + autenticar()
+    + atualizarPerfil()
+    + bloquear()
+}
+
+class Perfil {
+    - id: Long
+    - foto: String
+    - biografia: String
+    - cidade: String
+    - raioBusca: Double
+}
+
+class InteresseLiterario {
+    - id: Long
+    - genero: String
+    - autor: String
+    - tema: String
+}
+
+class Livro {
+    - id: Long
+    - titulo: String
+    - autor: String
+    - isbn: String
+    - edicao: String
+    - capa: String
+}
+
+class CopiaLivro {
+    - id: Long
+    - estadoConservacao: String
+    - disponibilidade: StatusLivro
+    - visibilidade: Visibilidade
+    - dataCadastro: Date
+}
+
+class Interesse {
+    - id: Long
+    - dataHora: DateTime
+    - status: StatusInteresse
+}
+
+class Match {
+    - id: Long
+    - dataCriacao: DateTime
+    - status: StatusMatch
+}
+
+class Reserva {
+    - id: Long
+    - dataHora: DateTime
+    - status: StatusReserva
+}
+
+class Chat {
+    - id: Long
+    - dataCriacao: DateTime
+}
+
+class Mensagem {
+    - id: Long
+    - conteudo: String
+    - dataHora: DateTime
+    - lida: Boolean
+}
+
+class Troca {
+    - id: Long
+    - local: String
+    - data: Date
+    - horario: Time
+    - status: StatusTroca
+}
+
+class Avaliacao {
+    - id: Long
+    - nota: Integer
+    - comentario: String
+    - data: DateTime
+}
+
+class Notificacao {
+    - id: Long
+    - titulo: String
+    - mensagem: String
+    - dataHora: DateTime
+    - lida: Boolean
+}
+
+class Denuncia {
+    - id: Long
+    - motivo: String
+    - dataHora: DateTime
+    - status: StatusDenuncia
+}
+
+class Bloqueio {
+    - id: Long
+    - dataHora: DateTime
+}
+
+class HistoricoTroca {
+    - id: Long
+    - dataConclusao: DateTime
+}
+
+class Administrador {
+    - nivel: String
+    + gerenciarUsuarios()
+    + gerenciarPrivilegios()
+}
+
+class AdministradorMaster {
+    + criarAdministrador()
+    + promoverAdministrador()
+    + rebaixarAdministrador()
+    + revogarAdministrador()
+}
+
+' Relacionamentos
+Usuario "1" -- "1" Perfil
+Usuario "1" -- "*" InteresseLiterario
+
+Usuario "1" -- "*" CopiaLivro : possui >
+Livro "1" -- "*" CopiaLivro : instância >
+
+Usuario "1" -- "*" Interesse : demonstra >
+CopiaLivro "1" -- "*" Interesse : alvo >
+
+Interesse "1" -- "0..1" Match
+
+Match "1" -- "2" Reserva : gera >
+Reserva "1" -- "1" CopiaLivro : bloqueia >
+
+Match "1" -- "1" Chat
+Chat "1" -- "*" Mensagem
+Usuario "1" -- "*" Mensagem : envia >
+
+Match "1" -- "0..1" Troca
+Troca "1" -- "*" Avaliacao
+
+Usuario "1" -- "*" Avaliacao : realiza (Avaliador) >
+Usuario "1" -- "*" Avaliacao : recebe (Avaliado) >
+
+Usuario "1" -- "*" Notificacao
+
+Usuario "1" -- "*" Denuncia : realiza >
+Usuario "1" -- "*" Bloqueio : realiza >
+
+Troca "1" -- "0..1" HistoricoTroca
+
+Administrador --|> Usuario
+AdministradorMaster --|> Administrador
+
+@enduml
